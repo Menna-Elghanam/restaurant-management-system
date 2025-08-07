@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(STAFF)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[] // One-to-many relation with the Order model
+}
+
+enum OrderType {
+  PLACE
+  TAKEAWAY
+  DELIVERY
+}
+
+model Order {
+  id              Int       @id @default(autoincrement())
+  tableId         Int?
+  userId          Int
+  total           Float
+  status          String // "pending", "completed")
+  orderType       OrderType  //"in_place" or "delivery"
+  deliveryAddress String?
+  deliveryTime    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  table      Table?      @relation(fields: [tableId], references: [id]) // Optional relation with Table
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade) // relation with user
+  invoice    Invoice? // optional relation with invoice 
+  orderItems OrderItem[] // One-to-many relation with OrderItem
+}
+
+//Represents the individual items within an order.
+
+model OrderItem {
+  id         Int      @id @default(autoincrement())
+  orderId    Int // Order ID (foreign key)
+  menuItemId Int // Menu item ID (foreign key)
+  quantity   Int
+  price      Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  order    Order    @relation(fields: [orderId], references: [id]) // relation to Order
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id]) // relation to MenuItem 
+}
+
+//Represents the menu items available in the restaurant.
+
+model MenuItem {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String
+  price       Float
+  available   Boolean   @default(true)
+  categoryId  Int? // Foreign key for Category
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  category    Category? @relation(fields: [categoryId], references: [id]) // Relation to Category
+
+  orderItems OrderItem[] // One-to-many relation with OrderItem
+}
+
+// category model 
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  menuItems MenuItem[] // One-to-many relation with MenuItem
+}
+
+model Table {
+  id     Int     @id @default(autoincrement())
+  number Int
+  seats  Int
+  orders Order[] // One-to-many relation with Order
+  status String  @default("Free")
+}
+
+//Represents the invoice associated with an order.
+
+model Invoice {
+  id             Int      @id @default(autoincrement())
+  orderId        Int      @unique // One-to-one relation with Order
+  billingName    String
+  billingAddress String
+  billingEmail   String
+  billingPhone   String
+  totalAmount    Float
+  status         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade) // relation to Order
+}
